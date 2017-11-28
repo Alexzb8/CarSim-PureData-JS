@@ -4,12 +4,38 @@
     <script src="js/jquery-3.2.0.min.js"></script>
     <script src="js/webpd-latest.min.js"></script>
 	<script type="text/javascript" src ="js/Animation.js"></script>
+	<style>
+		.outer {
+			display: table;
+			position: absolute;
+			height: 100%;
+			width: 100%;
+		}
+
+		.middle {
+			display: table-cell;
+			vertical-align: middle;
+		}
+
+		.inner {
+			margin-left: auto;
+			margin-right: auto;
+		}
+	</style>
    
   </head>
 
   <body style="margin : 0; background-color:black;">
-  <canvas id="myCanvas" width="1280" height="720" style="
-	margin: 0px;"></canvas>
+  <div class="outer">
+  <div class="middle">
+    <div class="inner">
+
+      <canvas id="myCanvas" width="1280" height="720" ></canvas>
+
+    </div>
+  </div>
+</div>
+  
   <script>
 		function drawdisplay(x,y,radius,context){
  	 
@@ -298,7 +324,6 @@
 			var ctx = c.getContext("2d");
 			var anim = new Animation("myCanvas");
 			
-			c.style.width = window.innerWidth+'px';
 			var patch;			
 			var idlespeed = 12;   //speed when the car is static
 			var speed = idlespeed;  //variable to store speed of car
@@ -313,8 +338,6 @@
 			var toggle = false; //variable to toggle between motors
 			
 			var car = "racing" //variable to toggle car
-			
-			
 			
 			var wind = new Wind();
 			
@@ -332,11 +355,6 @@
 			for(i=0;i<numdrops;i++){
 				drops[i] = new Drop();
 			}
-			
-			
-			
-			
-			
 			
 			//display instructions
 			alert("Use left and right arrow keys to move car\nUse spacebar to change cars");
@@ -384,7 +402,10 @@
 					}
 				}
 				
+				
 				anim.setStage(function() {
+					var width = window.innerWidth;
+					c.style.width = width+'px';// set width of the canvas to browser width
 					ctx.clearRect(0, 0, 1280, 720);
 					if(speedkey){
 						if(speedup){
