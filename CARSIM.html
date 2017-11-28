@@ -1,0 +1,437 @@
+<!doctype HTML>
+<html>
+  <head>
+    <script src="js/jquery-3.2.0.min.js"></script>
+    <script src="js/webpd-latest.min.js"></script>
+	<script type="text/javascript" src ="js/Animation.js"></script>
+   
+  </head>
+
+  <body style="margin : 0; background-color:black;">
+  <canvas id="myCanvas" width="1280" height="720" style="
+	margin: 0px;"></canvas>
+  <script>
+		function drawdisplay(x,y,radius,context){
+ 	 
+			 //draw circle
+			context.beginPath();
+			context.arc(x, y, radius, 0, 2 * Math.PI, false);
+			context.lineWidth = 9;
+			context.strokeStyle="red";
+			context.stroke();
+			context.fillStyle="white";
+			context.fill();
+
+			
+			//draw numbers
+			context.font = "8px arial";
+			context.fillStyle = "black";
+			var angledif = (2*Math.PI)/30;
+			var numradius = radius-15;
+			var xnum =0; 
+			var ynum =0; 
+			var yoffset = 1;
+			var xoffset = 7;
+			var angle= (Math.PI*1.2); 
+			
+			for(i=22;i>=1;i--){
+				ynum = y - (Math.sin(angle)*numradius)+ yoffset;
+				xnum = x - (Math.cos(angle)*numradius)- xoffset;
+				context.fillText(i*10,xnum,ynum);
+				angle= angle - angledif; 
+			}
+		 
+		}
+		function loadImage(name) {
+			//add image to images array and check if loaded
+			images[name] = new Image();
+			images[name].onload = function() {
+				resourceLoaded();
+			}
+			images[name].src = "cars/"+name + ".png";
+		}
+		function resourceLoaded() {
+			//check if all images are loaded
+			numResourcesLoaded += 1;
+			if(numResourcesLoaded === totalResources) {
+				game(); //begin game
+			}
+		}
+
+		function goX(xref,x,y,ang){
+			var sin = Math.sin(ang);
+			var cos = Math.cos(ang);	
+			var x = xref+(x*cos)+(y*sin);
+			return x;
+		}
+		function goY(yref,x,y,ang){
+			var sin = Math.sin(ang);
+			var cos = Math.cos(ang);
+			var y = yref+(y*cos)+((-1*x)*sin);
+			return y;
+		}
+		function createArray(length) {
+			var arr = new Array(length || 0),
+				i = length;
+
+			if (arguments.length > 1) {
+				var args = Array.prototype.slice.call(arguments, 1);
+				while(i--) arr[length-1 - i] = createArray.apply(this, args);
+			}
+
+			return arr;
+		}
+
+		function drawseconds(x,y,ang,context){
+			
+			
+			context.save();
+			context.beginPath();
+			context.moveTo( goX(x,-20,-2,ang) , goY(y,-20,-2,ang) );
+			context.lineTo( goX(x,90,0,ang) , goY(y,90,0,ang) );
+			context.lineTo( goX(x,90,0,ang) , goY(y,90,0,ang) );
+			context.lineTo( goX(x,-20,2,ang) , goY(y,-20,2,ang) );
+			context.closePath();
+			context.fillStyle="red";
+			context.fill();
+			context.restore();
+		}
+		function drawrect(x,y,w,h,color,ctx){
+			ctx.save();
+			ctx.fillStyle=color;
+			ctx.fillRect(x,y,w,h);	
+			ctx.restore();
+		}
+		function text(t,x,y,ctx){
+			ctx.save();
+			ctx.font = '60pt arial';
+			ctx.fillStyle= "white";
+			ctx.fillText(t, x, y);
+			ctx.restore();		
+		}
+		// Returns a random integer between min (included) and max (included)
+		function random(min, max) {
+		  min = Math.ceil(min);
+		  max = Math.floor(max);
+		  return Math.floor(Math.random() * (max - min + 1)) + min;
+		}
+		function Street(){
+			this.color = "white";     //lines colour
+			this.pavcolor = "#9A9A9A";	// pavement colour
+			this.pavh = 200;            // pavement width		
+			this.pavy = 720-this.pavh;  //pavement location	
+			this.w = 300;
+			this.h = 10;
+			this.speedvelratio = .5;
+			this.separation = 400;
+			this.y = this.pavy +(this.pavh/2)-(this.h/2);			
+			this.x1 = 0;
+			this.x2 = this.x1 + this.separation;
+			this.x3 = this.x2 + this.separation;
+			this.x4 = this.x3 + this.separation;
+			//railing
+			this.rx = 0;
+			this.ry = this.pavy-(this.pavh/2);
+			this.rw = 1280;
+			this.rh = this.h;
+			this.barheight = 500;
+			this.rcolor = "white";           // railing color
+			
+			//building
+			this.winw = 15; //window width
+			this.winh = 20; // window height
+			this.winmin = 2; //minimum number of windows
+			this.winmax = 6;
+			this.bminh = 500; //building min height
+			this.bmaxh = 50; //maxheight
+			this.mind = 3; //minimum distance to car to create parallax effect
+			this.maxd = 7; //max dist from car
+			this.numbuildings = 5;
+			this.windowcolor1 = "black";
+			this.windowcolor2 = "#FAF891";
+			this.buildingcolor = "#CDCDCD";
+			
+			this.buildings = createArray(this.numbuildings,4);
+			
+			this.createbuilding = function(i){
+				this.buildings[i][0] = random(0,1280); //x val
+				this.buildings[i][1] = random(this.bmaxh,this.bminh); //y val
+				this.buildings[i][2] = random(this.winmin,this.winmax); // num windows
+				this.buildings[i][3] = random(this.mind,this.maxd); //distance from car
+				this.buildings[i][4] = ((this.buildings[i][2])*2*this.winw) + this.winw; //width
+				this.buildings[i][5] = 1280-this.buildings[i][1];  //height
+			};
+			
+			this.drawstreet = function(speed,ctx){
+				//move street
+				speed = speed * this.speedvelratio ;
+				this.x1 -= speed;
+				this.x2 -= speed;
+				this.x3 -= speed;
+				this.x4 -= speed;
+				
+				if(this.x1<-this.w){
+					this.x1 = this.x4 + this.separation;
+				}
+				if(this.x2<-this.w){
+					this.x2 =this.x1 + this.separation;
+				}
+				if(this.x3<-this.w){
+					this.x3 = this.x2 + this.separation;
+				}		
+				if(this.x4<-this.w){
+					this.x4 = this.x3 + this.separation;
+				}
+				
+				//move and draw buildings
+				for(var i =0;i<this.numbuildings;i++){
+					this.buildings[i][0] = this.buildings[i][0] - ((speed/10)*this.buildings[i][3]);
+					if(this.buildings[i][0]<(-this.buildings[i][4])){
+						//create again
+						this.buildings[i][0] = random(1280,1280+500); //x val
+						this.buildings[i][1] = random(this.bmaxh,this.bminh); //y val
+						this.buildings[i][2] = random(this.winmin,this.winmax); // num windows
+						this.buildings[i][3] = random(this.mind,this.maxd); //distance from car
+						this.buildings[i][4] = ((this.buildings[i][2])*2*this.winw) + this.winw; //width
+						this.buildings[i][5] = 1280-this.buildings[i][1];  //height
+					}
+					//draw building
+					drawrect(this.buildings[i][0],this.buildings[i][1],this.buildings[i][4],this.buildings[i][5],this.buildingcolor,ctx);
+				
+				}
+				
+				
+				//draw railing				
+				drawrect(this.rx,this.ry,this.rw,this.rh,this.rcolor,ctx);
+				
+				drawrect(this.x1,this.ry,this.rh,this.barheight,this.color,ctx);
+				drawrect(this.x2,this.ry,this.rh,this.barheight,this.color,ctx);
+				drawrect(this.x3,this.ry,this.rh,this.barheight,this.color,ctx);
+				drawrect(this.x4,this.ry,this.rh,this.barheight,this.color,ctx);
+				
+				//draw street
+				drawrect(0,this.pavy,1280,this.pavh,this.pavcolor,ctx);	
+				drawrect(this.x1,this.y,this.w,this.h,this.color,ctx);
+				drawrect(this.x2,this.y,this.w,this.h,this.color,ctx);
+				drawrect(this.x3,this.y,this.w,this.h,this.color,ctx);	
+				drawrect(this.x4,this.y,this.w,this.h,this.color,ctx);	
+				
+			};	
+		};
+		
+		
+		function Wind(){
+			//set wind frequency
+			this.windchange = 1;  // how much wind changes each frame
+			this.freqmin = 10;
+			this.freqmax = 2000;
+			this.windfreq = 100;  // frequency to go next
+			this.windtogo = 200; //wind frequency to move to
+			this.numframes = 120;  //number of frames to change frequency
+			this.framecount = 0;
+			this.framemin = 20;
+			this.framemax = 80;
+			
+			this.changewind = function(){
+				this.framecount++;
+				if(this.framecount == this.numframes){
+					this.framecount = 0;
+					this.numframes = random(this.framemin,this.framemax);
+					this.windtogo = random(this.freqmin,this.freqmax);
+				}
+				this.windchange = (this.windtogo-this.windfreq)/this.numframes;		
+				
+				this.windfreq += this.windchange;
+				
+				Pd.send('windfreq', [this.windfreq]); //set frequency of wind			
+			};
+		};
+		function Drop(){
+			this.minw = 1; //min width
+			this.maxw = 5; //max width
+			this.closevel = 20; //velocity of close drops
+			this.farvel = 8; //velocity of far drops
+			this.ratio = 4;    //height to width ratio
+			this.width = random(this.minw,this.maxw);
+			this.height = this.width*this.ratio;
+			this.xoffset = 500;     //start drops 500 pixels left of canvas
+			this.xextraoffset = 2;
+			this.x = random(-this.xoffset,1280-this.width);
+			this.y = random(1,720-this.height);
+			this.draw = function(context,swivel,speed){
+			
+				swivel = swivel * .01;
+				speed = speed * .3;
+				
+				
+				this.y += (this.width*((this.closevel-this.farvel)/(this.maxw-this.minw)))+(this.farvel-(this.minw*((this.closevel-this.farvel)/(this.maxw-this.minw))));
+				this.x += (random(0,2)-1) + swivel-speed;
+				
+				if(this.y>=720){
+					this.width = random(this.minw,this.maxw);
+					this.height = this.width*this.ratio;
+					this.y = 0-this.height-10;
+					this.x = random(-this.xoffset,1280+ (this.xoffset*this.xextraoffset));
+				}
+				
+				context.save();
+				context.beginPath();
+				context.rect(this.x,this.y,this.width,this.height);
+				context.fillStyle="white";
+				context.fill();
+				context.restore();
+			};
+		};
+		
+		//load car images
+		// images are from www.flaticon.com 
+		var numResourcesLoaded = 0;
+		var totalResources = 2;
+		var images = [];
+			
+		//car images
+			loadImage("car");
+			loadImage("racing");
+        
+		function game() {
+			var c = document.getElementById("myCanvas");
+			var ctx = c.getContext("2d");
+			var anim = new Animation("myCanvas");
+			
+			c.style.width = window.innerWidth+'px';
+			var patch;			
+			var idlespeed = 12;   //speed when the car is static
+			var speed = idlespeed;  //variable to store speed of car
+			var speedup = false;
+			var speedkey = false;
+			var speedchange = 1;
+			var gear = 1;
+			var boxchange = 1;
+			
+			var raingain = 1;
+			var windgain = .05;
+			var toggle = false; //variable to toggle between motors
+			
+			var car = "racing" //variable to toggle car
+			
+			
+			
+			var wind = new Wind();
+			
+			//create street
+			var street = new Street();
+			//create buildings
+			for(var i =0;i<street.numbuildings;i++){
+				street.createbuilding(i);			
+			}
+			
+			//create drops
+			var numdrops = 500;
+			var drops = [];
+			
+			for(i=0;i<numdrops;i++){
+				drops[i] = new Drop();
+			}
+			
+			
+			
+			
+			
+			
+			//display instructions
+			alert("Use left and right arrow keys to move car\nUse spacebar to change cars");
+			
+			$.get('sourceFilter.pd', function(patchStr) {
+			  patch = Pd.loadPatch(patchStr);
+			  Pd.start();
+			  
+			  Pd.send('windgain', [windgain]);     //change the gain of wind
+			  Pd.send('raingain', [raingain]);    //change the gain of rain
+			  Pd.send('speed', [speed]);         //change the speed of car
+			  
+			  
+				document.body.onkeyup = function(e){
+					if(e.keyCode == 32){
+						if(toggle){
+							Pd.send('motor1', ['bang']);
+							toggle = false;
+							car = "racing";
+						}
+						else{
+							Pd.send('motor2', ['bang']);
+							toggle = true;
+							car = "car";
+						}
+						
+					}
+					if(e.keyCode == 39){
+						speedkey = false;			
+					}
+					if(e.keyCode == 37){
+						speedkey = false;				
+					}
+				}
+					
+				
+				document.body.onkeydown = function(e){
+					if(e.keyCode == 39){
+						speedkey = true;
+						speedup = true;				
+					}
+					if(e.keyCode == 37){
+						speedkey = true;
+						speedup = false;				
+					}
+				}
+				
+				anim.setStage(function() {
+					ctx.clearRect(0, 0, 1280, 720);
+					if(speedkey){
+						if(speedup){
+							speed = speed + speedchange;
+						}
+						else{
+							speed = speed - speedchange;
+							if(speed<idlespeed){
+								speed=idlespeed;
+							}							
+						}					
+						Pd.send('speed', [speed]);
+										
+					}
+					
+					wind.changewind();
+					
+					
+					//draw	
+					
+					street.drawstreet(speed-idlespeed,ctx);
+					
+					
+					//draw car
+					ctx.drawImage(images[car], 200, 260);
+					
+					//draw drops
+					for(i=0;i<numdrops;i++){
+						drops[i].draw(ctx,wind.windfreq,speed-idlespeed);
+					}
+					
+					//draw display
+					drawdisplay(90,630,80,ctx);
+					drawseconds(90,630,(speed*(-(Math.PI*1.5-Math.PI*(-.4))/(230)))+Math.PI*1.5,ctx)
+					
+				});
+				anim.start();
+				
+				
+				
+				
+				
+				
+			});
+		}
+    </script>
+	
+
+  </body>
+</html>
